@@ -60,8 +60,23 @@ Three.js：MIT，见 THREE-LICENSE.txt。
 - 鼠标移动按显示帧合并，抬笔时补齐最后一段；同帧仅渲染一次。
 - 保留原模型与 2048×2048 涂色纹理，关闭每次绘制时不必要的 mipmap 生成。
 
+## Say Well integration
+
+`index.html` is now the three-stage Say Well app. Use `painter.html` for standalone embedding (replace the old iframe URL above). Existing `getState()` / `setState()` behavior is preserved. Two additional methods are available after loading:
+
+```js
+component.markRegions([{ region: 'knee', side: 'left' }]);
+const png = component.snapshot();
+```
+
+`markRegions` replaces the current drawing with approximate surface areas and adds an undo entry. Left/right refer to the patient's perspective; side may also be `both` or `unspecified`. The supported 24 regions are exported in `regions.js`, including wrist, ankle, elbow, upper/lower back, and upper/lower abdomen. An optional `surface` is `front`, `back`, or `unspecified`. Selection uses skeleton bone ownership plus normalized coordinates. `markRegions` returns `{marked, missing, triangles}`; the UI reports any unpaintable suggestion. This mapping is approximate. It does not interpret freehand strokes as clinical locations. `snapshot()` returns a PNG data URL of the current view for local export.
+
+`getInfo()` returns cheap stroke/revision metadata. `setReadOnly(true)` allows rotation while preventing drawing edits in the final review. The root emits `skinpaint-ready` and `paintchange` events so the host can wait for loading and invalidate confirmation after manual edits.
+
 ## 人体 / 牙科切换
 
-入口页面顶部的“人体模型 / 牙科模型”可切换查看。牙科界面放在独立的同源 iframe 中，首次切换时才加载，避免与人体界面的 Three.js 版本及样式冲突。两个界面在切换时均保留当前页面内的标记；刷新仍会清空。
+症状沟通页的 3D 模型区域提供 **Body / 人体** 与 **Dental / 牙科** 切换。牙科模型通过同源 iframe 隔离 Three.js 和样式，首次切换时才加载，隐藏时停止渲染。切换保留两个模型在本页中的标记；刷新清空。
 
-牙科模型文件位于 `../dental-model/index.html`。支持“仅牙齿”和“牙齿＋对应牙龈”，每颗牙分别保存选择范围；点击对应局部牙龈也可联选。切换按钮支持方向键和 Home / End。
+牙科支持“仅牙齿”和“牙齿＋对应牙龈”，每颗牙分别保留选择范围；点击牙龈只关联对应局部区域。修改后需要重新确认，在最终回顾步骤禁止修改标记。摘要和下载包含牙位编号及是否包含牙龈；下载截图使用当前选择的模型。
+
+牙科文档通过 `iframe.contentWindow.dentalModel` 提供 `getState()`、`setReadOnly(boolean)` 和 `snapshot()`；文档上的 `dentalchange` 事件通知标记修改。切换键支持方向键与 Home / End。

@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Body map</title><style>:root{--font-size-base:15px;--foreground:#292329;--background:#ffffff}*{box-sizing:border-box}body{margin:0;background:var(--background);color:var(--foreground);font:12px/1.5 system-ui,sans-serif;padding:12px}main{max-width:1100px;margin:auto}.viz-row,.viz-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.viz-controls>.form-label{flex:1;min-width:180px}.form-label{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.form-range{width:100%;accent-color:#a14d51}.text-small{font-size:12px}.text-muted{color:#736b71}.btn,.form-select{font:inherit;border:1px solid #d9d0d1;border-radius:9px;padding:6px 9px;background:transparent;color:inherit}.btn{cursor:pointer}.btn-primary{background:#48363d;color:#fff;border-color:#48363d}.form-check{display:flex;gap:8px}.form-check-input{accent-color:#a14d51}a{color:#85474c}p{margin:0}details p{margin:12px 0}output{margin-left:auto}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #c68b70;outline-offset:3px}@media(max-width:500px){body{padding:14px}}button[aria-pressed="true"]{background:#48363d;color:#fff;border-color:#48363d}</style></head><body><main><div id="skin-paint">
+ <div class="viz-row"><span>Body markings</span><span class="text-small text-muted">Drag to mark the surface</span></div>
+ <div class="viz-row" role="group" aria-label="Interaction mode">
+  <button class="btn" data-mode="paint" aria-pressed="true">Paint</button><button class="btn" data-mode="rotate" aria-pressed="false">Rotate</button><button class="btn" data-mode="erase" aria-pressed="false">Erase</button><button class="btn" id="sp-undo">Undo</button><button class="btn" id="sp-clear">Clear</button>
+ </div>
+ <div id="sp-stage" role="img" aria-label="Rotatable body model. Drag to paint; use sliders to raise the arms."></div>
+ <div class="viz-row"><button class="btn" id="sp-front">Front</button><button class="btn" id="sp-back">Back</button><button class="btn" id="sp-leftview">Side</button><button class="btn" id="sp-top">Top</button><button class="btn" id="sp-bottom">Bottom</button><span class="text-small text-muted" id="sp-hint">Drag to paint · Scroll to zoom</span></div>
+ <div class="viz-controls">
+  <label class="form-label">Color <select class="form-select" id="sp-color"><option value="0">Coral</option><option value="1">Blue</option><option value="2">Purple</option></select></label>
+  <label class="form-label">Brush <input class="form-range" id="sp-size" aria-label="Brush size" type="range" min="1" max="8" value="3"></label>
+ </div>
+ <div class="viz-controls">
+  <label class="form-label">Left arm <output id="sp-lv">0°</output><input class="form-range" id="sp-left" aria-label="Left arm angle" type="range" min="0" max="120" value="0"></label>
+  <label class="form-label">Right arm <output id="sp-rv">0°</output><input class="form-range" id="sp-right" aria-label="Right arm angle" type="range" min="0" max="120" value="0"></label>
+ </div>
+ <p id="sp-status" class="text-small" aria-live="polite">Loading body model…</p>
+</div>
+<style>
+#skin-paint{display:grid;gap:calc(var(--font-size-base)*.75)}
+#skin-paint #sp-stage{height:375px;touch-action:none;cursor:crosshair}
+#skin-paint canvas{display:block;width:100%;height:100%}
+@media(max-width:440px){#skin-paint #sp-stage{height:350px}}
+</style>
+<script type="importmap">{"imports":{"three":"./three.module.js"}}</script><script type="module" src="./app.js?v=symptom-flow"></script><p style="font-size:12px;margin-top:20px;color:#736b71">Model:<a href="https://www.innerscene.com/tools/library/3d-parts/human-base-mesh-with-editable-53-bone-rig-8e7c8ab1" target="_blank" rel="noreferrer">MakeHuman / Innerscene</a> · CC0 · Illustrative pose</p></main></body></html>

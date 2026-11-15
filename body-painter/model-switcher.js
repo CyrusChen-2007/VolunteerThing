@@ -1,33 +1,38 @@
 const tabs = [...document.querySelectorAll('[data-model-tab]')];
-const bodyPanel = document.getElementById('body-panel');
+const bodyPanel = document.getElementById('body-map-panel');
 const dentalPanel = document.getElementById('dental-panel');
 const dentalFrame = document.getElementById('dental-model');
-
-function tellDentalVisibility() {
+let selectedModel = 'body';
+let dentalReadOnly = false;
+export const activeModel = () => selectedModel;
+export const dental = () => dentalFrame.contentWindow?.dentalModel;
+export function setDentalReadOnly(value) {
+  dentalReadOnly = value;
+  dental()?.setReadOnly(value);
+}
+export function notifyModelVisibility() {
   if (!dentalFrame.hasAttribute('src')) return;
   dentalFrame.contentWindow?.postMessage({
     type: 'volunteerthing:model-visibility',
-    visible: !dentalPanel.hidden && !document.hidden,
+    visible: !dentalPanel.closest('[hidden]') && !document.hidden,
   }, window.location.origin);
 }
-
 function selectModel(model, focus = false) {
-  const dental = model === 'dental';
-  bodyPanel.hidden = dental;
-  dentalPanel.hidden = !dental;
+  selectedModel = model;
+  const isDental = model === 'dental';
+  bodyPanel.hidden = isDental;
+  dentalPanel.hidden = !isDental;
   for (const tab of tabs) {
     const selected = tab.dataset.modelTab === model;
     tab.setAttribute('aria-selected', String(selected));
     tab.tabIndex = selected ? 0 : -1;
     if (selected && focus) tab.focus();
   }
-  // Load the dental viewer once; retaining both panels preserves their annotations.
-  if (dental && !dentalFrame.hasAttribute('src')) {
-    dentalFrame.src = dentalFrame.dataset.src;
-  }
-  tellDentalVisibility();
+  // Keep both documents alive so switching never discards annotations.
+  if (isDental && !dentalFrame.hasAttribute('src')) dentalFrame.src = dentalFrame.dataset.src;
+  notifyModelVisibility();
+  document.dispatchEvent(new Event('modelchange'));
 }
-
 for (const tab of tabs) {
   tab.addEventListener('click', () => selectModel(tab.dataset.modelTab));
   tab.addEventListener('keydown', event => {
@@ -39,5 +44,11 @@ for (const tab of tabs) {
     selectModel(tabs[next].dataset.modelTab, true);
   });
 }
-dentalFrame.addEventListener('load', tellDentalVisibility);
-document.addEventListener('visibilitychange', tellDentalVisibility);
+dentalFrame.addEventListener('load', () => {
+  const doc = dentalFrame.contentDocument;
+  doc?.addEventListener('dentalchange', () => document.dispatchEvent(new Event('dentalchange')));
+  doc?.addEventListener('dental-ready', () => {setDentalReadOnly(dentalReadOnly);notifyModelVisibility();});
+  setDentalReadOnly(dentalReadOnly);
+  notifyModelVisibility();
+});
+document.addEventListener('visibilitychange', notifyModelVisibility);

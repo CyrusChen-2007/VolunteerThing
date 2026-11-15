@@ -1,23 +1,71 @@
-# VolunteerThing
-A Thing-y to promote volunteer commitment and engegement
+# Say Well
 
+A symptom communication tool for people who find it easier to describe how they feel in a language other than English. Built on the `UI/UX` branch's 3D body painter.
 
-## Interactive 3D body painter (UI/UX prototype)
-
-The `body-painter/` directory contains the standalone browser demo: a CC0 rigged human model, 3D surface painting and erasing, undo, arm posing, unrestricted rotation, and fast zoom. Model picking and brush updates are optimized for interactive painting.
-
-Run from this repository:
+## Run locally
 
 ```sh
-python3 -m http.server 8080
+python3 server.py
 ```
 
-Open `http://localhost:8080/body-painter/`. All model and library assets are included; no API key or build step is required. Serve over HTTP rather than opening the HTML directly.
+Open http://localhost:8080. Python 3.9+ is sufficient; no packages or build step are required. The server binds to localhost and serves only the `body-painter/` assets.
 
-See [integration instructions and model credits](body-painter/README.md) for embedding and the annotation save/restore API. Annotations remain in page memory unless the host application saves them.
+Without an API key, **manual mode** preserves multilingual input but does not translate or infer symptoms. Users select locations and enter English details themselves.
 
-## Dental model
+To enable multilingual interpretation, put `OPENAI_API_KEY=your-key` in a local `.env` file at the repository root, or set `OPENAI_API_KEY` in your shell environment before starting the server. The `.env` file is ignored by Git; shell settings take precedence. Optionally set `OPENAI_MODEL` (default `gpt-4.1`) and `PORT` (default `8080`). The API key stays on the server. The app asks users to opt in before sending symptom text to OpenAI. They can also switch to manual mode.
 
-The same `body-painter/` page now has **人体模型 / 牙科模型** tabs. The dental viewer loads on first use and retains its selections when switching back to the body. It supports tooth-only and tooth-with-adjacent-gingiva selections, rotation, zoom, jaw views, and mouth opening. Each marked tooth retains its selection scope independently. Root ends outside the gingiva are removed.
+## Flow
 
-The standalone viewer is `dental-model/index.html`; all runtime libraries and anatomy data are embedded, so it also works offline. The dental anatomy is an adaptation of BodyParts3D / Anatomography © DBCLS, via OrganUI, licensed CC BY-SA 2.1 Japan; see `dental-model/ATTRIBUTION.md`. This license applies to the adapted dental model and its renders. The body model retains its separate CC0 license.
+1. **Describe:** write in any language. With AI enabled, get one relevant follow-up in that language, a visible full English translation of each message, and a separate cumulative English account. You can skip further questions.
+2. **Show us where:** review and edit the complete English account, preserving symptom/location/time associations and explicit negatives. Approximate model markings use the bundled model’s bone weights for 24 regions, including hands, wrists, ankles and lower back. Automatic marks update after location corrections; hand-drawn corrections are preserved until explicitly replaced. Correct them using the existing paint, erase, undo, rotation, zoom and arm controls. Location labels remain editable and are independent of freehand marks. Users confirm both before proceeding.
+3. **Your statement:** generate and edit a first-person English statement alongside the same body map. Copy it or download self-contained HTML notes containing the statement, original words, location labels and a PNG of the current model view.
+
+No diagnosis or treatment is generated. Unknown details remain unspecified. The mapping is approximate, not anatomical measurement. Clinician review and a qualified interpreter may still be needed. This is a local prototype, not a deployment-ready clinical system.
+
+## Data handling
+
+Conversations and drawings live in page memory and clear on refresh. The server does not save them or log request bodies. In AI mode, text is sent to OpenAI with `store: false`; provider processing and retention policies still apply. Drawings stay local. Downloaded notes contain symptom information and are saved only when requested. No analytics or external font dependencies are included.
+
+## Files
+
+- `server.py`, `interpretation.py`: local static server, strict structured-output contract, and isolated literal translation pass, using the [OpenAI Chat Completions API](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create).
+- `body-painter/index.html`, `flow.css`, `flow.js`: responsive three-stage application.
+- `body-painter/symptoms.js`: statement construction and export escaping.
+- `body-painter/painter.html`, `app.js`, `regions.js`: embedded painter and skeleton-based region selection. The original standalone painter remains available at `/painter.html`.
+
+The existing static preview (`python3 -m http.server 8080`, then `/body-painter/`) still works in manual mode.
+
+## Verification
+
+```sh
+python3 -m unittest discover -s tests -v
+node --test tests/*.test.mjs
+node --check body-painter/flow.js
+node --check body-painter/app.js
+```
+
+Tests cover interpretation validation, unknown fields, laterality, deduplication, negation, and safe export escaping. Live model interpretation requires a valid API key. A synthetic Chinese symptom example was verified to produce English symptom details and the correct left-knee location.
+
+See [body painter documentation](body-painter/README.md) for model credits and the version 2 annotation save/restore API.
+
+
+## Scenario testing agent
+
+The independent testing agent added a reusable synthetic user driver:
+
+```sh
+python3 tests/scenario_agent.py --output /tmp/say-well-scenarios.json
+python3 tests/scenario_agent.py --scenario en_uncertainty --output /tmp/say-well-english.json
+```
+
+It exercises 14 scenarios across seven languages, including corrections, multiple symptoms, negation, uncertainty, posterior locations, skipping questions, and instruction injection. These are live API calls (two model calls per interpretation: literal translation and conversational extraction). No real patient data or credentials are included in reports. See [before/after findings](tests/SCENARIO_REPORT.md).
+
+Local verification includes 35 unit/geometry checks. Geometry tests read the actual GLB and verify paintable faces on every supported region and side. Browser checks verified automatic hand painting, right-to-left correction, freehand paint, erasing, confirmation invalidation, and preservation of final statement edits. Scenario checks and visual inspection are regression evidence, not a guarantee of translation accuracy; the original text, translation and editable account stay visible for review.
+
+## Dental map
+
+In “Show us where”, use the **Body / 人体** and **Dental / 牙科** tabs in the model card. Switching preserves each model's annotations. The dental model loads on first use and pauses rendering while hidden. Select teeth alone or include each tooth's adjacent gum; different selection scopes can coexist. Root ends are removed from the displayed geometry.
+
+Dental changes require re-review, as body changes do. In the reviewed statement step, dental annotations are read-only; rotation and zoom remain available. Dental labels appear with body labels in the summary and downloaded notes; downloads capture the currently selected model.
+
+`body-painter/dental-model/index.html` is also a self-contained offline viewer. Its anatomy is adapted from BodyParts3D / Anatomography © DBCLS, via OrganUI, under CC BY-SA 2.1 Japan; see `body-painter/dental-model/ATTRIBUTION.md`. That license applies to the adapted dental model and its renders; the body model retains its separate CC0 license. Rendering libraries retain their MIT licenses, included alongside the viewer.
