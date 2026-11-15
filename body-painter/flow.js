@@ -10,7 +10,27 @@ const details = Object.fromEntries(Object.keys(FIELDS).map(key => [key, '']));
 const translations = [];
 let dentalReport={involved:false,locations:[]}, dentalKey=null, dentalManual=false, dentalJob=0;
 
-const notice = text => { $('notice').textContent = text; };
+const notice = text => {
+  const element=$('notice');
+  $(step===1?'chat-notice-slot':step===2?'review-notice-slot':'summary-notice-slot').append(element);
+  element.textContent=text;
+  element.hidden=!text;
+  element.dataset.tone=/copied|downloaded|Manual mode is on/i.test(text)?'success':'info';
+};
+function refreshReviewCopy(){
+  const final=step===3;
+  $('body-map-help').textContent=final?'This is your reviewed body map. Return to edit the markings.':'No specific location? It’s okay to leave the body unmarked.';
+  $('dental-map-help').textContent=final?'This is your reviewed dental map. Return to edit the selected teeth and gums.':'Select a tooth alone, or include its adjacent gum. Dental markings are kept separately from body drawings.';
+  for(const id of ['map-status','dental-status']){
+    const el=$(id);
+    if(final){
+      if(!el.dataset.reviewCopy)el.dataset.reviewCopy=el.textContent;
+      if(id==='map-status')el.textContent='Your reviewed markings are kept with your statement. Rotate the model to view them.';
+      else{const suggestion=dentalSuggestions(dentalReport);el.textContent=suggestion.unsupported?'Wisdom teeth are not shown in this model. Your description still includes the symptom.':suggestion.uncertain&&!dentalManual?'Highlighted teeth indicate a candidate area, not a confirmed painful tooth.':'Your reviewed tooth and gum selections are kept with your statement.';}
+    }else if(el.dataset.reviewCopy){el.textContent=el.dataset.reviewCopy;delete el.dataset.reviewCopy;}
+  }
+}
+
 function locationLabels(){
   const body = regions.map(regionText);
   const candidate = !dentalManual && dentalSuggestions(dentalReport).uncertain;
@@ -23,7 +43,8 @@ function updateModelCaption(){
   $('apply-marks').hidden=isDental;
   $('location-help').textContent=isDental?'Highlighted teeth may represent a suggested area. Select or deselect teeth to refine it, and update the English account if needed.':'Suggested body marks are approximate. Paint or erase to correct them. Check both the markings and the English account.';
   $('map-title').textContent = isDental ? 'Your dental map' : 'Your body map';
-  $('map-caption').textContent = step === 3 ? 'Your reviewed markings. Drag to rotate.' : isDental ? 'Select a tooth, or include its adjacent gum.' : 'Paint what you feel. You’re in control.';
+  $('map-caption').textContent = step === 3 ? 'Your reviewed markings. Drag to rotate.' : isDental ? 'Select a tooth, or include its adjacent gum.' : 'Mark where you feel it. You’re in control.';
+  refreshReviewCopy();
 }
 document.addEventListener('modelchange',updateModelCaption);
 document.addEventListener('dentalchange',event=>{if(event.detail?.source!=='automatic')dentalManual=true;invalidate();});
@@ -65,7 +86,7 @@ function invalidate() {
 }
 function updateNavigation() {
   $('to-body').disabled = busy || !valid;
-  document.querySelectorAll('[data-step]').forEach(button => {
+  document.querySelectorAll('.progress-nav button[data-step]').forEach(button => {
     const next = +button.dataset.step;
     button.disabled = busy || next === 2 && !valid || next === 3 && (!valid || !$('confirmed').checked);
     if (next === step) button.setAttribute('aria-current', 'step');
@@ -93,7 +114,9 @@ function bubble(role, text) {
   const div = document.createElement('div');
   div.className = `message ${role}`;
   div.dir = 'auto';
-  div.textContent = text;
+  const author=document.createElement('span');author.className='message-author';author.textContent=role==='user'?'You':'Say Well';author.dir='ltr';
+  const content=document.createElement('div');content.className='message-content';content.textContent=text;
+  div.append(author,content);
   $('messages').append(div);
   $('messages').scrollTop = $('messages').scrollHeight;
   return div;
@@ -129,6 +152,11 @@ function bindPainter() {
   const root = painterRoot();
   if (!root || root.dataset.flowBound) return;
   root.dataset.flowBound = 'true';
+  // Size the frame to its own content so expanded tools never create nested scroll.
+  const frame=$('painter'),main=root.ownerDocument.querySelector('main');
+  const size=()=>{if(!main.getBoundingClientRect().width)return;frame.style.height=Math.ceil(main.getBoundingClientRect().height+32)+'px';};
+  new ResizeObserver(size).observe(main);
+  size();
   root.addEventListener('paintchange', event => {
     if (event.detail.source !== 'automatic') {
       manualDrawing = true;
@@ -177,9 +205,11 @@ async function syncMap(force = false) {
 function changeStep(next) {
   if (busy || next !== 1 && !valid || next === 3 && !$('confirmed').checked) return;
   step = next;
+  document.body.dataset.step=String(next);
   notice('');
-  for (const [id, visible] of Object.entries({conversation:next === 1, welcome:next === 1, details:next === 2, summary:next === 3, 'model-card':next !== 1})) $(id).hidden = !visible;
-  $('page-title').textContent = ['', 'How are you feeling?', 'Let’s put a place to the feeling.', 'Your words, ready to be heard.'][next];
+  for (const [id, visible] of Object.entries({conversation:next === 1, welcome:next === 1, details:next === 2, summary:next === 3, 'model-card':next !== 1, 'review-actions':next === 2})) $(id).hidden = !visible;
+  $('page-title').textContent = ['', 'Let’s start with how you feel.', 'Make sure it feels right.', 'Your words, ready to be heard.'][next];
+  $('step-label').textContent=['','STEP 01 · DESCRIBE','STEP 02 · REVIEW & LOCATE','STEP 03 · YOUR STATEMENT'][next];
   $('page-subtitle').textContent = ['', 'Tell us what’s bothering you, in whatever language feels easiest.', 'Check the English description and the painted areas. Correct anything we missed.', 'Your own account, ready for a conversation with a clinician.'][next];
   $('map-caption').textContent = next === 3 ? 'Your reviewed markings. Drag to rotate.' : 'Paint what you feel. You’re in control.';
   updateModelCaption();
@@ -188,7 +218,8 @@ function changeStep(next) {
   updateNavigation();
   $('apply-dental').hidden=next===3||!dentalReport.involved;
   if (next !== 1) {void syncMap();void syncDental();}
-  window.scrollTo({top:0, behavior:'smooth'});
+  $('page-title').focus({preventScroll:true});
+  $('page-title').scrollIntoView({block:'start',behavior:'instant'});
 }
 $('apply-marks').onclick = () => { void syncMap(true); };
 $('add-region').onclick = () => {
@@ -216,7 +247,7 @@ function showSummary() {
   changeStep(3);
 }
 $('to-summary').onclick = showSummary;
-document.querySelectorAll('[data-step]').forEach(button => button.onclick = () => +button.dataset.step === 3 ? showSummary() : changeStep(+button.dataset.step));
+document.querySelectorAll('.progress-nav button[data-step]').forEach(button => button.onclick = () => +button.dataset.step === 3 ? showSummary() : changeStep(+button.dataset.step));
 document.querySelectorAll('[data-back]').forEach(button => button.onclick = () => changeStep(+button.dataset.back));
 function setBusy(value) {
   busy = value;
@@ -224,6 +255,8 @@ function setBusy(value) {
   $('retry').disabled = value;
   $('use-manual').disabled = value;
   $('description').disabled = value;
+  $('consent').disabled = value;
+  $('messages').setAttribute('aria-busy',String(value));
   $('send').textContent = value ? 'Listening…' : 'Send message ↗';
   $('thinking').hidden = !value;
   updateNavigation();
@@ -275,7 +308,7 @@ $('chat-form').onsubmit = async event => {
   const text = $('description').value.trim();
   if (!text) return;
   if (ai && !$('consent').checked) {
-    notice('Please allow translation below, or choose “Continue without AI interpretation”.');
+    notice('Choose “Use AI to help translate my words” above, or continue without AI.');
     $('consent').focus();
     return;
   }
@@ -312,11 +345,11 @@ $('download').onclick = () => {
 };
 function configureMode() {
   $('use-manual').hidden = !ai;
-  $('connection').textContent = ai ? 'LANGUAGE SUPPORT ON' : 'MANUAL MODE';
+  $('connection').textContent = ai ? 'AI translation' : 'Manual mode';
   $('consent-row').hidden = !ai;
   $('fields').hidden = ai;
-  $('review-note').textContent = ai ? 'This is your full English account, including corrections. Compare it with the translations in chat and edit anything that doesn’t match.' : 'Write an English description, or fill in the optional details below. Your original words remain available; manual mode does not translate them.';
-  $('privacy').textContent = ai ? 'With your permission, symptom text is sent to OpenAI to translate. Drawings stay in this browser.' : 'Manual mode: no automatic translation. Notes stay in this tab and clear on refresh.';
+  $('review-note').textContent = ai ? 'Read the English description and change anything that doesn’t match what you meant. Your original words and translations stay in the conversation.' : 'Write an English description, or fill in the optional details below. Your original words remain available; manual mode does not translate them.';
+  $('privacy').textContent = ai ? 'Notes clear when this page is refreshed. You choose what to share.' : 'Manual mode: no automatic translation. Notes stay in this tab and clear on refresh.';
 }
 $('use-manual').onclick = () => {
   if (busy) return;
