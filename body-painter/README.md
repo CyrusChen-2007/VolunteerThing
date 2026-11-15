@@ -59,3 +59,16 @@ Three.js：MIT，见 THREE-LICENSE.txt。
 - 使用空间网格只处理笔刷附近的 UV 三角形。
 - 鼠标移动按显示帧合并，抬笔时补齐最后一段；同帧仅渲染一次。
 - 保留原模型与 2048×2048 涂色纹理，关闭每次绘制时不必要的 mipmap 生成。
+
+## Say Well integration
+
+`index.html` is now the three-stage Say Well app. Use `painter.html` for standalone embedding (replace the old iframe URL above). Existing `getState()` / `setState()` behavior is preserved. Two additional methods are available after loading:
+
+```js
+component.markRegions([{ region: 'knee', side: 'left' }]);
+const png = component.snapshot();
+```
+
+`markRegions` replaces the current drawing with approximate surface areas and adds an undo entry. Left/right refer to the patient's perspective; side may also be `both` or `unspecified`. The supported 24 regions are exported in `regions.js`, including wrist, ankle, elbow, upper/lower back, and upper/lower abdomen. An optional `surface` is `front`, `back`, or `unspecified`. Selection uses skeleton bone ownership plus normalized coordinates. `markRegions` returns `{marked, missing, triangles}`; the UI reports any unpaintable suggestion. This mapping is approximate. It does not interpret freehand strokes as clinical locations. `snapshot()` returns a PNG data URL of the current view for local export.
+
+`getInfo()` returns cheap stroke/revision metadata. `setReadOnly(true)` allows rotation while preventing drawing edits in the final review. The root emits `skinpaint-ready` and `paintchange` events so the host can wait for loading and invalidate confirmation after manual edits.
