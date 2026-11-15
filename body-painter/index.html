@@ -1,4 +1,17 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>皮肤涂色人体</title><style>:root{--font-size-base:15px;--foreground:#292329;--background:#f8f6f3}*{box-sizing:border-box}body{margin:0;background:var(--background);color:var(--foreground);font:15px/1.5 system-ui,sans-serif;padding:24px}main{max-width:1100px;margin:auto}.viz-row,.viz-controls{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.viz-controls>.form-label{flex:1;min-width:180px}.form-label{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.form-range{width:100%;accent-color:#a14d51}.text-small{font-size:12px}.text-muted{color:#736b71}.btn,.form-select{font:inherit;border:1px solid #d9d0d1;border-radius:9px;padding:9px 14px;background:transparent;color:inherit}.btn{cursor:pointer}.btn-primary{background:#48363d;color:#fff;border-color:#48363d}.form-check{display:flex;gap:8px}.form-check-input{accent-color:#a14d51}a{color:#85474c}p{margin:0}details p{margin:12px 0}output{margin-left:auto}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #c68b70;outline-offset:3px}@media(max-width:500px){body{padding:14px}}button[aria-pressed="true"]{background:#48363d;color:#fff;border-color:#48363d}</style></head><body><main><div id="skin-paint">
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>3D 位置标记 · 人体 / 牙科</title><style>:root{--font-size-base:15px;--foreground:#292329;--background:#f8f6f3}*{box-sizing:border-box}body{margin:0;background:var(--background);color:var(--foreground);font:15px/1.5 system-ui,sans-serif;padding:24px}main{max-width:1100px;margin:auto}.viz-row,.viz-controls{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.viz-controls>.form-label{flex:1;min-width:180px}.form-label{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.form-range{width:100%;accent-color:#a14d51}.text-small{font-size:12px}.text-muted{color:#736b71}.btn,.form-select{font:inherit;border:1px solid #d9d0d1;border-radius:9px;padding:9px 14px;background:transparent;color:inherit}.btn{cursor:pointer}.btn-primary{background:#48363d;color:#fff;border-color:#48363d}.form-check{display:flex;gap:8px}.form-check-input{accent-color:#a14d51}a{color:#85474c}p{margin:0}details p{margin:12px 0}output{margin-left:auto}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #c68b70;outline-offset:3px}@media(max-width:500px){body{padding:14px}}button[aria-pressed="true"]{background:#48363d;color:#fff;border-color:#48363d}
+[hidden]{display:none!important}
+.model-tabs{display:flex;gap:6px;margin-bottom:20px;padding:5px;width:fit-content;background:#eee8e8;border:1px solid #e1d8da;border-radius:12px}
+.model-tabs .btn{border:0;min-height:44px;min-width:112px}
+.model-tabs [aria-selected="true"]{background:#48363d;color:white;box-shadow:0 2px 6px #48363d14}
+#dental-model{display:block;width:100%;height:clamp(660px,calc(100svh - 130px),960px);border:1px solid #d7dfe2;border-radius:14px;background:#e8edf0}
+@media(max-width:500px){.model-tabs{margin-bottom:14px}#dental-model{height:760px}}
+</style></head><body><main>
+<nav class="model-tabs" role="tablist" aria-label="3D 模型类型">
+<button class="btn" id="body-tab" role="tab" aria-selected="true" aria-controls="body-panel" tabindex="0" data-model-tab="body">人体模型</button>
+<button class="btn" id="dental-tab" role="tab" aria-selected="false" aria-controls="dental-panel" tabindex="-1" data-model-tab="dental">牙科模型</button>
+</nav>
+<section id="body-panel" role="tabpanel" aria-labelledby="body-tab">
+<div id="skin-paint">
  <div class="viz-row"><span>身体标记</span><span class="text-small text-muted">360° 人体 · 三维表面涂色</span></div>
  <div class="viz-row" role="group" aria-label="操作模式">
   <button class="btn" data-mode="paint" aria-pressed="true">涂色</button><button class="btn" data-mode="rotate" aria-pressed="false">自由旋转</button><button class="btn" data-mode="erase" aria-pressed="false">橡皮擦</button><button class="btn" id="sp-undo">撤销</button><button class="btn" id="sp-clear">清空涂色</button>
@@ -21,4 +34,9 @@
 #skin-paint canvas{display:block;width:100%;height:100%}
 @media(max-width:440px){#skin-paint #sp-stage{height:420px}}
 </style>
-<script type="importmap">{"imports":{"three":"./three.module.js"}}</script><script type="module" src="./app.js?v=zoom-5x"></script><p style="font-size:12px;margin-top:20px;color:#736b71">模型：<a href="https://www.innerscene.com/tools/library/3d-parts/human-base-mesh-with-editable-53-bone-rig-8e7c8ab1" target="_blank" rel="noreferrer">MakeHuman / Innerscene</a> · CC0 · 姿势仅作示意</p></main></body></html>
+<script type="importmap">{"imports":{"three":"./three.module.js"}}</script><script type="module" src="./app.js?v=zoom-5x"></script><p style="font-size:12px;margin-top:20px;color:#736b71">模型：<a href="https://www.innerscene.com/tools/library/3d-parts/human-base-mesh-with-editable-53-bone-rig-8e7c8ab1" target="_blank" rel="noreferrer">MakeHuman / Innerscene</a> · CC0 · 姿势仅作示意</p></section>
+<section id="dental-panel" role="tabpanel" aria-labelledby="dental-tab" hidden>
+<iframe id="dental-model" data-src="../dental-model/index.html" title="牙科 3D 模型：选择牙齿或牙齿及对应牙龈"></iframe>
+</section>
+<script type="module" src="./model-switcher.js"></script>
+</main></body></html>
