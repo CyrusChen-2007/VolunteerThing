@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {dentalSuggestions} from '../body-painter/dental-regions.js';
+const location={jaw:'unspecified',side:'unspecified',area:'unspecified',tooth:0,includesGum:false};
+const suggest=patch=>dentalSuggestions({involved:true,locations:[{...location,...patch}]});
+test('upper-left back symptoms select only the candidate quadrant',()=>{const r=suggest({jaw:'upper',side:'left',area:'back'});assert.deepEqual(r.selections.map(s=>s.tooth),[24,25,26,27]);assert.equal(r.uncertain,true);});
+test('exact FDI tooth with gum does not mark neighboring teeth',()=>{assert.deepEqual(suggest({tooth:46,includesGum:true}).selections,[{tooth:46,includesGum:true}]);});
+test('unknown dental location does not select every tooth',()=>{assert.deepEqual(suggest({}).selections,[]);});
+test('wisdom tooth never marks a substitute molar',()=>{for(const p of [{tooth:48},{area:'wisdom',jaw:'lower',side:'left'}]){const r=suggest(p);assert.deepEqual(r.selections,[]);assert.equal(r.unsupported,true);}});
+test('correction recomputes candidates on the new side only',()=>{assert.ok(suggest({jaw:'lower',side:'right',area:'back'}).selections.every(s=>s.tooth>=44));assert.ok(suggest({jaw:'lower',side:'left',area:'back'}).selections.every(s=>s.tooth>=34&&s.tooth<=37));});
