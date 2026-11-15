@@ -69,3 +69,10 @@ In “Show us where”, use the **Body / 人体** and **Dental / 牙科** tabs i
 Dental changes require re-review, as body changes do. In the reviewed statement step, dental annotations are read-only; rotation and zoom remain available. Dental labels appear with body labels in the summary and downloaded notes; downloads capture the currently selected model.
 
 `body-painter/dental-model/index.html` is also a self-contained offline viewer. Its anatomy is adapted from BodyParts3D / Anatomography © DBCLS, via OrganUI, under CC BY-SA 2.1 Japan; see `body-painter/dental-model/ATTRIBUTION.md`. That license applies to the adapted dental model and its renders; the body model retains its separate CC0 license. Rendering libraries retain their MIT licenses, included alongside the viewer.
+
+
+### Dental symptom interpretation
+
+The dental model UI and tooth names are in English. AI interpretation now returns a separate validated `dental` object. Current tooth/gum symptoms open the dental tab and highlight the described jaw/side/area; explicit unambiguous FDI tooth numbers can select a specific tooth. Broad descriptions show **candidate areas**, not a claim that every highlighted tooth is painful. Unknown locations open an unmarked dental model. Wisdom teeth are not part of this 28-tooth model and are never replaced with a different tooth. Mixed body and dental symptoms retain both sets of markings. Manual dental selections survive later AI updates unless the patient chooses to replace them.
+
+Run dental mapping tests with `node --test tests/dental-regions.test.mjs`. Run six synthetic multilingual live checks with `python3 tests/dental_scenarios.py` (requires the local server and makes API calls).

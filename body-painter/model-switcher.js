@@ -17,7 +17,7 @@ export function notifyModelVisibility() {
     visible: !dentalPanel.closest('[hidden]') && !document.hidden,
   }, window.location.origin);
 }
-function selectModel(model, focus = false) {
+export function selectModel(model, focus = false) {
   selectedModel = model;
   const isDental = model === 'dental';
   bodyPanel.hidden = isDental;
@@ -46,7 +46,7 @@ for (const tab of tabs) {
 }
 dentalFrame.addEventListener('load', () => {
   const doc = dentalFrame.contentDocument;
-  doc?.addEventListener('dentalchange', () => document.dispatchEvent(new Event('dentalchange')));
+  doc?.addEventListener('dentalchange', event => document.dispatchEvent(new CustomEvent('dentalchange',{detail:event.detail})));
   doc?.addEventListener('dental-ready', () => {setDentalReadOnly(dentalReadOnly);notifyModelVisibility();});
   setDentalReadOnly(dentalReadOnly);
   notifyModelVisibility();

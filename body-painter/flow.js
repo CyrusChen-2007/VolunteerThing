@@ -1,4 +1,5 @@
-import {activeModel,dental,setDentalReadOnly,notifyModelVisibility} from './model-switcher.js';
+import {dentalSuggestions} from './dental-regions.js';
+import {activeModel,dental,setDentalReadOnly,notifyModelVisibility,selectModel} from './model-switcher.js';
 import {FIELDS,statementFor,escapeHTML} from './symptoms.js';
 import {REGIONS,regionLabel,regionText} from './regions.js';
 const $ = id => document.getElementById(id);
@@ -7,19 +8,52 @@ let reviewVersion = 0, summaryVersion = -1, manualDrawing = false, mapKey = null
 let lastUserBubble = null, interpretationFailed = false;
 const details = Object.fromEntries(Object.keys(FIELDS).map(key => [key, '']));
 const translations = [];
+let dentalReport={involved:false,locations:[]}, dentalKey=null, dentalManual=false, dentalJob=0;
+
 const notice = text => { $('notice').textContent = text; };
 function locationLabels(){
   const body = regions.map(regionText);
-  const teeth = (dental()?.getState().selections || []).map(s => `Tooth ${s.tooth} (${s.label})${s.includesGum ? ' and adjacent gum' : ''}`);
+  const candidate = !dentalManual && dentalSuggestions(dentalReport).uncertain;
+  const teeth = (dental()?.getState().selections || []).map(s => `${candidate ? 'Candidate tooth' : 'Tooth'} ${s.tooth} (${s.label})${s.includesGum ? ' and adjacent gum' : ''}`);
   return [...body,...teeth];
 }
 function updateModelCaption(){
   const isDental = activeModel() === 'dental';
+  $('body-location-fields').hidden=isDental;
+  $('apply-marks').hidden=isDental;
+  $('location-help').textContent=isDental?'Highlighted teeth may represent a suggested area. Select or deselect teeth to refine it, and update the English account if needed.':'Suggested body marks are approximate. Paint or erase to correct them. Check both the markings and the English account.';
   $('map-title').textContent = isDental ? 'Your dental map' : 'Your body map';
   $('map-caption').textContent = step === 3 ? 'Your reviewed markings. Drag to rotate.' : isDental ? 'Select a tooth, or include its adjacent gum.' : 'Paint what you feel. You’re in control.';
 }
 document.addEventListener('modelchange',updateModelCaption);
-document.addEventListener('dentalchange',invalidate);
+document.addEventListener('dentalchange',event=>{if(event.detail?.source!=='automatic')dentalManual=true;invalidate();});
+
+async function syncDental(force=false) {
+  if(step===1)return;
+  const key=JSON.stringify(dentalReport),job=++dentalJob;
+  $('confirmed').disabled=dentalReport.involved&&!$('dental-model').contentWindow?.modelReady;
+  if(!dentalReport.involved&&!dental())return;
+  for(let attempt=0;!$('dental-model').contentWindow?.modelReady&&attempt<200;attempt++) {
+    $('dental-status').textContent='Loading the dental model…';
+    await new Promise(resolve=>setTimeout(resolve,100));
+    if(job!==dentalJob||step===1)return;
+  }
+  $('confirmed').disabled=false;
+  if(!$('dental-model').contentWindow?.modelReady){$('dental-status').textContent='The dental model could not load. Your English account is still available. Please reload to try again.';return;}
+  setDentalReadOnly(step===3);
+  if(!force&&key===dentalKey)return;
+  $('apply-dental').hidden=step===3;
+  if(!force&&dentalManual){$('dental-status').textContent='Your dental description changed. Your manual selections are kept. Replace them with the suggestions, or review them yourself.';return;}
+  const suggestion=dentalSuggestions(dentalReport);
+  dental().markTeeth(suggestion.selections);
+  dentalKey=key;dentalManual=false;
+  $('dental-status').textContent=suggestion.unsupported
+    ? 'Wisdom teeth are not included in this 28-tooth model. That symptom remains in your English account; no substitute tooth is selected.'
+    :suggestion.selections.length
+      ?suggestion.uncertain?'Highlighted teeth show a possible area, not a confirmed painful tooth. Click to refine the selection. Left and right are your own sides.':'The reported tooth is highlighted. Check it and adjust if needed. Left and right are your own sides.'
+      :dentalReport.involved?'Dental symptoms detected, but the tooth is not yet identified. Select the painful tooth, or tell the chat which side and upper/lower jaw.':'No dental symptom reported. You may still select a tooth manually.';
+}
+$('apply-dental').onclick=()=>void syncDental(true);
 
 function painterRoot() { return $('painter').contentDocument?.getElementById('skin-paint'); }
 function painter() { return painterRoot()?.skinPaint; }
@@ -152,7 +186,8 @@ function changeStep(next) {
   setDentalReadOnly(next === 3);
   notifyModelVisibility();
   updateNavigation();
-  if (next !== 1) void syncMap();
+  $('apply-dental').hidden=next===3||!dentalReport.involved;
+  if (next !== 1) {void syncMap();void syncDental();}
   window.scrollTo({top:0, behavior:'smooth'});
 }
 $('apply-marks').onclick = () => { void syncMap(true); };
@@ -214,6 +249,8 @@ async function interpret() {
       $(`field-${key}`).value = details[key];
     }
     regions = data.regions;
+    dentalReport=data.dental;
+    selectModel(dentalReport.involved?'dental':'body');
     renderRegions();
     bubble('assistant', data.reply);
     messages.push({role:'assistant', content:data.reply});
@@ -289,6 +326,8 @@ $('use-manual').onclick = () => {
     $('review-english').value = '';
     for (const key of Object.keys(details)) { details[key] = ''; $(`field-${key}`).value = ''; }
     regions = [];
+    dentalReport={involved:false,locations:[]};
+    selectModel('body');
     renderRegions();
   }
   $('retry').hidden = true;

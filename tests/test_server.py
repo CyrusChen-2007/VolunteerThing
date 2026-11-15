@@ -8,7 +8,7 @@ spec.loader.exec_module(server)
 
 class InterpretationValidation(unittest.TestCase):
     def result(self):
-        return {'reply':'请确认左膝的位置。','translation':'My left knee hurts.','statement':'My left knee hurts.','ready':True,'details':dict.fromkeys(server.FIELDS,''),'regions':[{'region':'knee','side':'left'}]}
+        return {'reply':'请确认左膝的位置。','translation':'My left knee hurts.','statement':'My left knee hurts.','ready':True,'dental':{'involved':False,'locations':[]},'details':dict.fromkeys(server.FIELDS,''),'regions':[{'region':'knee','side':'left'}]}
     def test_unknown_details_stay_empty_and_patient_side_retained(self):
         result=server.validate_result(self.result())
         self.assertEqual(result['regions'],[{'region':'knee','side':'left','surface':'unspecified'}])
@@ -20,6 +20,14 @@ class InterpretationValidation(unittest.TestCase):
     def test_non_text_fields_rejected(self):
         data=self.result();data['details']['symptom']={'unexpected':'value'}
         with self.assertRaises(ValueError):server.validate_result(data)
+    def test_invalid_dental_tooth_is_rejected(self):
+        data=self.result()
+        data['dental']={'involved':True,'locations':[{'jaw':'upper','side':'left','area':'back','tooth':99,'includesGum':False}]}
+        with self.assertRaises(ValueError):server.validate_result(data)
+    def test_denied_dental_symptom_cannot_carry_locations(self):
+        data=self.result()
+        data['dental']={'involved':False,'locations':[{'jaw':'upper','side':'left','area':'back','tooth':0,'includesGum':False}]}
+        with self.assertRaises(ValueError):server.validate_result(data)
     def test_duplicates_removed(self):
         data=self.result();data['regions']*=2
         self.assertEqual(len(server.validate_result(data)['regions']),1)
@@ -27,7 +35,7 @@ class InterpretationValidation(unittest.TestCase):
 class TranslationIsolation(unittest.TestCase):
     def result(self):
         return {'reply':'When did it start?', 'translation':'unused', 'statement':'My hand is numb.',
-                'ready':False, 'details':dict.fromkeys(server.FIELDS,''), 'regions':[]}
+                'ready':False, 'dental':{'involved':False,'locations':[]},'details':dict.fromkeys(server.FIELDS,''), 'regions':[]}
 
     def test_english_input_is_retained_even_if_model_switches_language(self):
         original='Maybe my hand is numb, but it is not painful.'
